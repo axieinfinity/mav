@@ -57,13 +57,9 @@ impl<'a, T> Commander<'a, T> {
     }
 
     pub fn add_subcommands<'b>(&'a self, app: App<'a, 'b>) -> App<'a, 'b> {
-        let mut app = app;
-
-        for cmd in &self.cmds {
-            app = app.subcommand(cmd.command(self.version, self.author))
-        }
-
-        app
+        self.cmds.iter().fold(app, |app, cmd| {
+            app.subcommand(cmd.command(self.version, self.author))
+        })
     }
 
     pub fn run(&self, args: T, matches: ArgMatches<'_>) {
