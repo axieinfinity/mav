@@ -4,7 +4,7 @@ use crate::commander::Command;
 use crate::file_stem;
 use crate::util;
 
-pub fn get_command<'a>() -> Command<'a, String> {
+pub fn get_command<'a>() -> Command<'a, str> {
     Command::new(
         file_stem!(),
         "Installs all components",

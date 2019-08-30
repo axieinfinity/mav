@@ -1,13 +1,13 @@
 use clap::{App, ArgMatches, SubCommand};
 
-pub struct Command<'a, T> {
+pub struct Command<'a, T: ?Sized> {
     name: &'a str,
     about: &'a str,
     cmd: Box<dyn for<'x, 'y> Fn(App<'x, 'y>) -> App<'x, 'y> + 'a>,
     run: Box<dyn Fn(&T, &ArgMatches<'_>) -> () + 'a>,
 }
 
-impl<'a, T> Command<'a, T> {
+impl<'a, T: ?Sized> Command<'a, T> {
     pub fn new<N, A, C, R>(name: N, about: A, cmd: C, run: R) -> Self
     where
         N: Into<&'a str>,
@@ -41,13 +41,13 @@ impl<'a, T> Command<'a, T> {
     }
 }
 
-pub struct Commander<'a, T> {
+pub struct Commander<'a, T: ?Sized> {
     version: &'a str,
     author: &'a str,
     cmds: Vec<Command<'a, T>>,
 }
 
-impl<'a, T> Commander<'a, T> {
+impl<'a, T: ?Sized> Commander<'a, T> {
     pub fn new(version: &'a str, author: &'a str, cmds: Vec<Command<'a, T>>) -> Self {
         Commander {
             version,
@@ -62,10 +62,10 @@ impl<'a, T> Commander<'a, T> {
         })
     }
 
-    pub fn run(&self, args: T, matches: ArgMatches<'_>) {
+    pub fn run(&self, args: &T, matches: &ArgMatches<'_>) {
         for cmd in &self.cmds {
             if let Some(matches) = matches.subcommand_matches(cmd.name()) {
-                cmd.run(&args, matches);
+                cmd.run(args, matches);
                 break;
             }
         }

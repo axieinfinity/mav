@@ -26,7 +26,7 @@ fn main() {
     let app = commander.add_subcommands(app);
 
     let matches = app.get_matches();
-    let env = matches.value_of("environment").unwrap_or("dev").to_owned();
+    let env = matches.value_of("environment").unwrap_or("dev");
 
-    commander.run(env, matches);
+    commander.run(env, &matches);
 }
