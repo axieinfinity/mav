@@ -81,7 +81,7 @@ impl Command {
     }
 }
 
-pub fn check_install<C: AsRef<OsStr> + Copy + Display>(cmd: C) -> bool {
+pub fn check_install<C: AsRef<OsStr> + Display>(cmd: C) -> bool {
     print!(
         "{}{}{}",
         "Checking if ".yellow(),
@@ -123,13 +123,13 @@ pub fn install_brew_if_needed() {
 pub fn install_brew_formulae_if_needed<F, I>(formulae: F)
 where
     F: IntoIterator<Item = I>,
-    I: AsRef<OsStr> + Into<OsString> + Copy + Display,
+    I: AsRef<OsStr> + Display,
 {
     let mut args = vec!["install".into()];
 
     for formula in formulae {
-        if !check_install(formula) {
-            args.push(formula.into());
+        if !check_install(&formula) {
+            args.push(formula.as_ref().to_owned());
         }
     }
 
@@ -139,8 +139,6 @@ where
     }
 }
 
-pub fn install_brew_formula_if_needed<F: AsRef<OsStr> + Into<OsString> + Copy + Display>(
-    formula: F,
-) {
+pub fn install_brew_formula_if_needed<F: AsRef<OsStr> + Display>(formula: F) {
     install_brew_formulae_if_needed(vec![formula])
 }
