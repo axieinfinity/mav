@@ -2,6 +2,7 @@ use clap::Arg;
 
 use crate::commander::Command;
 use crate::file_stem;
+use crate::util;
 
 pub fn get_command<'a>() -> Command<'a, String> {
     Command::new(
@@ -18,6 +19,14 @@ pub fn get_command<'a>() -> Command<'a, String> {
             )
         },
         |env, matches| {
+            match util::OS {
+                util::Os::MacOs => {
+                    util::install_brew_formula_if_needed("hyperkit");
+                }
+
+                _ => panic!("OS not supported."),
+            }
+
             println!("env = {}", env);
             println!("{:?}", matches);
 

@@ -6,3 +6,7 @@ edition = "2018"
 
 [dependencies]
 clap = "2.33.0"
+colored = "1.8.0"
+duct = "0.12.0"
+os_pipe = "0.8.1"
+which = "2.0.1"
