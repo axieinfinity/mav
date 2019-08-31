@@ -1,3 +1,4 @@
+use std::cmp::min;
 use std::ffi::{OsStr, OsString};
 use std::os::unix::fs::PermissionsExt;
 use std::{fmt, fs};
@@ -8,7 +9,6 @@ use futures::compat::{Compat, Future01CompatExt, Stream01CompatExt};
 use futures::{stream, Future, FutureExt, StreamExt};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use reqwest::r#async::Client;
-use std::cmp::min;
 use tokio::fs::File;
 use which::which;
 
@@ -184,7 +184,7 @@ where
                 "{} {} {}",
                 "Homebrew formula".green(),
                 formula,
-                "is installed successfully.".green()
+                "is installed successfully.".green(),
             );
         }
     }
