@@ -1,3 +1,5 @@
+#![feature(async_closure)]
+
 use clap::{App, Arg};
 
 mod cmd;

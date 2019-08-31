@@ -74,21 +74,31 @@ impl Command {
         }
     }
 
-    fn pipe_stdout(&mut self) -> &mut Self {
+    pub fn then<P, A, I>(mut self, program: P, args: A) -> Self
+    where
+        P: ToExecutable,
+        A: IntoIterator<Item = I>,
+        I: Into<OsString>,
+    {
+        self.exp = self.exp.then(duct::cmd(program, args));
+        self
+    }
+
+    fn pipe_stdout(mut self) -> Self {
         self.exp = self.exp.stdout_handle(os_pipe::dup_stdout().unwrap());
         self
     }
 
-    fn pipe_stderr(&mut self) -> &mut Self {
+    fn pipe_stderr(mut self) -> Self {
         self.exp = self.exp.stderr_handle(os_pipe::dup_stderr().unwrap());
         self
     }
 
-    fn pipe_all(&mut self) -> &mut Self {
+    fn pipe_all(self) -> Self {
         self.pipe_stdout().pipe_stderr()
     }
 
-    pub fn run(&mut self) {
+    pub fn run(self) {
         let output = self.pipe_all().exp.unchecked().run().unwrap();
 
         if !output.status.success() {
@@ -96,7 +106,7 @@ impl Command {
         }
     }
 
-    pub fn read(&mut self) -> String {
+    pub fn read(self) -> String {
         self.pipe_stderr().exp.read().unwrap()
     }
 }
@@ -278,7 +288,7 @@ impl DownloadingInstaller {
                         bar.set_position(downloaded_size);
                     }
 
-                    if let Some(mut postinstall) = item.postinstall {
+                    if let Some(postinstall) = item.postinstall {
                         postinstall.run();
                     } else {
                         fs::set_permissions(&item.cmd, fs::Permissions::from_mode(0o755)).unwrap();

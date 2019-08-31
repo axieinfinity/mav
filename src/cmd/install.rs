@@ -58,7 +58,8 @@ pub fn get_command<'a>() -> Command<'a, str> {
                                     "docker-machine-driver-hyperkit",
                                     "/usr/local/bin/",
                                 ],
-                            ),
+                            )
+                            .then("rm", vec!["-f", "docker-machine-driver-hyperkit"]),
                         )
                         .enqueue("minikube", minikube_url)
                         .run();
