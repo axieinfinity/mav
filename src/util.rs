@@ -84,6 +84,16 @@ impl Command {
         self
     }
 
+    pub fn pipe<P, A, I>(mut self, program: P, args: A) -> Self
+    where
+        P: ToExecutable,
+        A: IntoIterator<Item = I>,
+        I: Into<OsString>,
+    {
+        self.exp = self.exp.pipe(duct::cmd(program, args));
+        self
+    }
+
     fn pipe_stdout(mut self) -> Self {
         self.exp = self.exp.stdout_handle(os_pipe::dup_stdout().unwrap());
         self
@@ -312,7 +322,7 @@ impl DownloadingInstaller {
     }
 }
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug)]
 pub enum MinikubeStatus {
     Running,
     Stopped,
@@ -329,4 +339,8 @@ pub fn get_minikube_status() -> MinikubeStatus {
         "Stopped" => MinikubeStatus::Stopped,
         _ => MinikubeStatus::Unknown,
     }
+}
+
+pub fn get_minikube_ip() -> String {
+    Command::new("minikube", vec!["--profile=mav", "ip"]).read()
 }

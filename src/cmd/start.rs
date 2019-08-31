@@ -2,6 +2,8 @@ use crate::commander::Command;
 use crate::file_stem;
 use crate::util;
 
+use super::fix;
+
 const MINIKUBE_CPUS: u16 = 2;
 const MINIKUBE_DISK_SIZE: &'static str = "20000mb";
 const MINIKUBE_ISO_VERSION: &'static str = "1.3.0";
@@ -13,7 +15,7 @@ pub fn get_command<'a>() -> Command<'a, str> {
         file_stem!(),
         "Starts a Minikube machine for development",
         |app| app,
-        |env, _matches| {
+        |env, matches| {
             if env != "dev" {
                 panic!("Only supported in \"dev\" environment.");
             }
@@ -49,6 +51,8 @@ pub fn get_command<'a>() -> Command<'a, str> {
                     .run();
                 }
             }
+
+            fix::run(env, matches);
         },
     )
 }
