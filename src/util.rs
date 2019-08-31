@@ -1,8 +1,15 @@
 use std::ffi::{OsStr, OsString};
+use std::os::unix::fs::PermissionsExt;
+use std::{fmt, fs};
 
 use colored::Colorize;
 use duct::{Expression, ToExecutable};
-use std::fmt::Display;
+use futures::compat::{Compat, Future01CompatExt, Stream01CompatExt};
+use futures::{stream, Future, FutureExt, StreamExt};
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use reqwest::r#async::Client;
+use std::cmp::min;
+use tokio::fs::File;
 use which::which;
 
 #[macro_export]
@@ -14,6 +21,18 @@ macro_rules! file_stem {
             .to_str()
             .unwrap()
     };
+}
+
+pub fn tokio_run<F: Future<Output = ()> + Send + 'static>(future: F) {
+    tokio::run(Compat::new(Box::pin(
+        future.map(|()| -> Result<(), ()> { Ok(()) }),
+    )));
+}
+
+pub fn tokio_spawn<F: Future<Output = ()> + Send + 'static>(future: F) {
+    tokio::spawn(Compat::new(Box::pin(
+        future.map(|()| -> Result<(), ()> { Ok(()) }),
+    )));
 }
 
 #[allow(dead_code)]
@@ -38,6 +57,7 @@ pub fn command_exists<C: AsRef<OsStr>>(cmd: C) -> bool {
     which(cmd).is_ok()
 }
 
+#[derive(Clone, Debug)]
 pub struct Command {
     exp: Expression,
 }
@@ -54,18 +74,6 @@ impl Command {
         }
     }
 
-    pub fn run(&mut self) {
-        let output = self.pipe_all().exp.unchecked().run().unwrap();
-
-        if !output.status.success() {
-            std::process::exit(output.status.code().unwrap_or(128));
-        }
-    }
-
-    pub fn read(&mut self) -> String {
-        self.pipe_stderr().exp.read().unwrap()
-    }
-
     fn pipe_stdout(&mut self) -> &mut Self {
         self.exp = self.exp.stdout_handle(os_pipe::dup_stdout().unwrap());
         self
@@ -79,14 +87,26 @@ impl Command {
     fn pipe_all(&mut self) -> &mut Self {
         self.pipe_stdout().pipe_stderr()
     }
+
+    pub fn run(&mut self) {
+        let output = self.pipe_all().exp.unchecked().run().unwrap();
+
+        if !output.status.success() {
+            std::process::exit(output.status.code().unwrap_or(128));
+        }
+    }
+
+    pub fn read(&mut self) -> String {
+        self.pipe_stderr().exp.read().unwrap()
+    }
 }
 
-pub fn check_install<C: AsRef<OsStr> + Display>(cmd: C) -> bool {
+pub fn check_install<C: AsRef<OsStr> + fmt::Display>(cmd: C) -> bool {
     print!(
-        "{}{}{}",
-        "Checking if ".yellow(),
+        "{} {} {}",
+        "Checking if".yellow(),
         cmd,
-        " is installed..".yellow()
+        "is installed..".yellow()
     );
 
     let installed = command_exists(cmd);
@@ -103,7 +123,7 @@ pub fn check_install<C: AsRef<OsStr> + Display>(cmd: C) -> bool {
     installed
 }
 
-pub fn install_brew_if_needed() {
+pub fn install_brew() {
     if !check_install("brew") {
         println!("Installing brew..");
 
@@ -117,28 +137,163 @@ pub fn install_brew_if_needed() {
         .read();
 
         Command::new("ruby", vec!["-e", &script]).run();
+
+        println!("Homebrew {}", "is installed successfully.".green());
     }
 }
 
-pub fn install_brew_formulae_if_needed<F, I>(formulae: F)
+pub fn install_brew_formula<F: AsRef<OsStr> + Clone + fmt::Display>(formula: F) {
+    install_brew_formulae(vec![formula])
+}
+
+pub fn install_brew_formulae<F, I>(formulae: F)
 where
     F: IntoIterator<Item = I>,
-    I: AsRef<OsStr> + Display,
+    I: AsRef<OsStr> + Clone + fmt::Display,
 {
+    let mut formulae_to_install = vec![];
     let mut args = vec!["install".into()];
 
     for formula in formulae {
         if !check_install(&formula) {
+            formulae_to_install.push(formula.clone());
             args.push(formula.as_ref().to_owned());
         }
     }
 
     if args.len() > 1 {
-        install_brew_if_needed();
+        install_brew();
         Command::new("brew", args).run();
+
+        for formula in formulae_to_install {
+            println!(
+                "{} {} {}",
+                "Homebrew formula".green(),
+                formula,
+                "is installed successfully.".green()
+            );
+        }
     }
 }
 
-pub fn install_brew_formula_if_needed<F: AsRef<OsStr> + Display>(formula: F) {
-    install_brew_formulae_if_needed(vec![formula])
+pub fn install_by_downloading<C, U>(cmd: C, url: U) -> DownloadingInstaller
+where
+    C: Into<String>,
+    U: Into<String>,
+{
+    DownloadingInstaller::new().enqueue(cmd, url)
+}
+
+#[derive(Debug)]
+pub struct DownloadingInstaller {
+    items: Vec<DownloadedItem>,
+}
+
+#[derive(Debug)]
+struct DownloadedItem {
+    cmd: String,
+    url: String,
+    postinstall: Option<Command>,
+}
+
+impl DownloadedItem {
+    pub fn new(cmd: String, url: String, postinstall: Option<Command>) -> Self {
+        DownloadedItem {
+            cmd,
+            url,
+            postinstall,
+        }
+    }
+}
+
+impl Clone for DownloadedItem {
+    fn clone(&self) -> Self {
+        DownloadedItem::new(self.cmd.clone(), self.url.clone(), self.postinstall.clone())
+    }
+}
+
+impl DownloadingInstaller {
+    pub fn new() -> Self {
+        DownloadingInstaller { items: vec![] }
+    }
+
+    pub fn enqueue<C, U>(self, cmd: C, url: U) -> Self
+    where
+        C: Into<String>,
+        U: Into<String>,
+    {
+        self.enqueue_with_postinstall(cmd, url, None)
+    }
+
+    pub fn enqueue_with_postinstall<C, U, P>(mut self, cmd: C, url: U, postinstall: P) -> Self
+    where
+        C: Into<String>,
+        U: Into<String>,
+        P: Into<Option<Command>>,
+    {
+        let cmd = cmd.into();
+
+        if !check_install(&cmd) {
+            let item = DownloadedItem::new(cmd, url.into(), postinstall.into());
+            self.items.push(item);
+        }
+
+        self
+    }
+
+    pub fn run(self) {
+        tokio_run(async move {
+            let progress = MultiProgress::new();
+
+            let style = ProgressStyle::default_bar()
+                .template("{spinner:.green} {msg:10} [{bar:40.cyan/blue}] {bytes}/{total_bytes} (ETA: {eta})")
+                .progress_chars("#>-");
+
+            let mut items = vec![];
+
+            for item in &self.items {
+                let bar = ProgressBar::new(1);
+                let bar = progress.add(bar);
+                bar.set_style(style.clone());
+                bar.set_message(&item.cmd[..min(10, item.cmd.len())]);
+
+                items.push((item.to_owned(), bar));
+            }
+
+            tokio_spawn(
+                stream::iter(items).for_each_concurrent(8, async move |(item, bar)| {
+                    let res = Client::new().get(&item.url).send().compat().await.unwrap();
+                    let total_size = res.content_length().unwrap_or(0);
+
+                    bar.set_length(total_size);
+
+                    let mut body = res.into_body().compat();
+                    let mut file = File::create(item.cmd.clone()).compat().await.unwrap();
+
+                    let mut downloaded_size = 0u64;
+
+                    while let Some(Ok(chunk)) = body.next().await {
+                        downloaded_size += chunk.len() as u64;
+                        file = tokio::io::write_all(file, chunk).compat().await.unwrap().0;
+                        bar.set_position(downloaded_size);
+                    }
+
+                    if let Some(mut postinstall) = item.postinstall {
+                        postinstall.run();
+                    } else {
+                        fs::set_permissions(&item.cmd, fs::Permissions::from_mode(0o755)).unwrap();
+                        fs::rename(&item.cmd, format!("/usr/local/bin/{}", item.cmd)).unwrap();
+                    }
+
+                    bar.finish_and_clear();
+                }),
+            );
+
+            progress.join_and_clear().unwrap();
+
+            for item in &self.items {
+                println!("{} {}", item.cmd, "is installed successfully.".green());
+            }
+        });
+    }
 }
