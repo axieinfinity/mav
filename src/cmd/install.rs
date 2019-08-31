@@ -8,7 +8,7 @@ const MINIKUBE_VERSION: &'static str = "1.3.1";
 pub fn get_command<'a>() -> Command<'a, str> {
     Command::new(
         file_stem!(),
-        "Installs all components",
+        "Installs all prerequisites",
         |app| app,
         |env, _matches| {
             let platform = match util::OS {
