@@ -109,6 +109,10 @@ impl Command {
     pub fn read(self) -> String {
         self.pipe_stderr().exp.read().unwrap()
     }
+
+    pub fn read_unchecked(self) -> String {
+        self.pipe_stderr().exp.unchecked().read().unwrap()
+    }
 }
 
 pub fn check_install<C: AsRef<OsStr> + fmt::Display>(cmd: C) -> bool {
@@ -273,7 +277,7 @@ impl DownloadingInstaller {
             tokio_spawn(
                 stream::iter(items).for_each_concurrent(8, async move |(item, bar)| {
                     let res = Client::new().get(&item.url).send().compat().await.unwrap();
-                    let total_size = res.content_length().unwrap_or(0);
+                    let total_size = res.content_length().unwrap_or_default();
 
                     bar.set_length(total_size);
 
@@ -305,5 +309,24 @@ impl DownloadingInstaller {
                 println!("{} {}", item.cmd, "is installed successfully.".green());
             }
         });
+    }
+}
+
+#[derive(Debug)]
+pub enum MinikubeStatus {
+    Running,
+    Stopped,
+    Unknown,
+}
+
+pub fn get_minikube_status() -> MinikubeStatus {
+    let status = Command::new("minikube", vec!["--profile=mav", "status"]).read_unchecked();
+    let status = status.lines().next().unwrap_or_default();
+    let status = status.split_whitespace().take(2).last().unwrap_or_default();
+
+    match status {
+        "Running" => MinikubeStatus::Running,
+        "Stopped" => MinikubeStatus::Stopped,
+        _ => MinikubeStatus::Unknown,
     }
 }

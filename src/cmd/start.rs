@@ -18,22 +18,41 @@ pub fn get_command<'a>() -> Command<'a, str> {
                 panic!("Only supported in \"dev\" environment.");
             }
 
-            util::Command::new(
-                "minikube",
-                vec![
-                    "start",
-                    &format!("--cpus={}", MINIKUBE_CPUS),
-                    &format!("--disk-size={}", MINIKUBE_DISK_SIZE),
-                    &format!(
-                        "--iso-url=https://storage.googleapis.com/minikube/iso/minikube-v{}.iso",
-                        MINIKUBE_ISO_VERSION
-                    ),
-                    &format!("--kubernetes-version=v{}", MINIKUBE_KUBERNETES_VERSION),
-                    &format!("--memory={}", MINIKUBE_MEMORY),
-                    "--vm-driver=hyperkit",
-                ],
-            )
-            .run();
+            match util::get_minikube_status() {
+                util::MinikubeStatus::Running => {}
+
+                util::MinikubeStatus::Stopped => {
+                    util::Command::new(
+                        "minikube",
+                        vec![
+                            "--profile=mav",
+                            "start",
+                            "--vm-driver=hyperkit",
+                        ],
+                    )
+                    .run();
+                }
+
+                util::MinikubeStatus::Unknown => {
+                    util::Command::new(
+                        "minikube",
+                        vec![
+                            "--profile=mav",
+                            "start",
+                            &format!("--cpus={}", MINIKUBE_CPUS),
+                            &format!("--disk-size={}", MINIKUBE_DISK_SIZE),
+                            &format!(
+                                "--iso-url=https://storage.googleapis.com/minikube/iso/minikube-v{}.iso",
+                                MINIKUBE_ISO_VERSION
+                            ),
+                            &format!("--kubernetes-version=v{}", MINIKUBE_KUBERNETES_VERSION),
+                            &format!("--memory={}", MINIKUBE_MEMORY),
+                            "--vm-driver=hyperkit",
+                        ],
+                    )
+                    .run();
+                }
+            }
         },
     )
 }
