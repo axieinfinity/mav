@@ -24,11 +24,7 @@ pub fn get_command<'a>() -> Command<'a, str> {
                 util::MinikubeStatus::Stopped => {
                     util::Command::new(
                         "minikube",
-                        vec![
-                            "--profile=mav",
-                            "start",
-                            "--vm-driver=hyperkit",
-                        ],
+                        vec!["--profile=mav", "start", "--vm-driver=hyperkit"],
                     )
                     .run();
                 }
