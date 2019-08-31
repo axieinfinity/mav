@@ -1,4 +1,5 @@
 use clap::{App, ArgMatches, SubCommand};
+use colored::Colorize;
 
 pub struct Command<'a, T: ?Sized> {
     name: &'a str,
@@ -66,8 +67,14 @@ impl<'a, T: ?Sized> Commander<'a, T> {
         for cmd in &self.cmds {
             if let Some(matches) = matches.subcommand_matches(cmd.name()) {
                 cmd.run(args, matches);
-                break;
+                return;
             }
         }
+
+        println!(
+            "{}\n\nFor more information try {}",
+            matches.usage(),
+            "--help".green()
+        );
     }
 }
