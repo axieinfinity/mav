@@ -29,11 +29,14 @@ pub fn run(env: &str, _matches: &ArgMatches<'_>) {
                     vec![
                         "bash",
                         "-c",
-                        "cat <<EOF >/etc/resolver/mav
-nameserver 10.96.0.10
-domain svc.cluster.local
-options ndots:5
-EOF",
+                        &vec![
+                            "cat <<EOF >/etc/resolver/mav",
+                            "nameserver 10.96.0.10",
+                            "domain svc.cluster.local",
+                            "options ndots:5",
+                            "EOF",
+                        ]
+                        .join("\n"),
                     ],
                 )
                 .run();
