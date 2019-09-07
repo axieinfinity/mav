@@ -285,7 +285,7 @@ impl DownloadingInstaller {
             }
 
             tokio_spawn(
-                stream::iter(items).for_each_concurrent(8, async move |(item, bar)| {
+                stream::iter(items).for_each_concurrent(4, async move |(item, bar)| {
                     let res = Client::new().get(&item.url).send().compat().await.unwrap();
                     let total_size = res.content_length().unwrap_or_default();
 
