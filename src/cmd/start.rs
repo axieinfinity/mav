@@ -52,6 +52,8 @@ pub fn get_command<'a>() -> Command<'a, str> {
                 }
             }
 
+            util::Command::new("helm", vec!["init"]).run();
+
             fix::run(env, matches);
         },
     )
