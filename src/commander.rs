@@ -28,7 +28,7 @@ impl<'a, T: ?Sized> Command<'a, T> {
         self.name
     }
 
-    pub fn command<'b>(&'a self, version: &'b str, author: &'b str) -> App<'a, 'b> {
+    pub fn command<'b>(&self, version: &'a str, author: &'a str) -> App<'b, 'a> {
         (self.cmd)(
             SubCommand::with_name(self.name)
                 .version(version)
@@ -43,23 +43,19 @@ impl<'a, T: ?Sized> Command<'a, T> {
 }
 
 pub struct Commander<'a, T: ?Sized> {
-    version: &'a str,
-    author: &'a str,
     cmds: Vec<Command<'a, T>>,
 }
 
 impl<'a, T: ?Sized> Commander<'a, T> {
-    pub fn new(version: &'a str, author: &'a str, cmds: Vec<Command<'a, T>>) -> Self {
-        Commander {
-            version,
-            author,
-            cmds,
-        }
+    pub fn new(cmds: Vec<Command<'a, T>>) -> Self {
+        Commander { cmds }
     }
 
-    pub fn add_subcommands<'b>(&'a self, app: App<'a, 'b>) -> App<'a, 'b> {
+    pub fn add_subcommands<'b>(&self, app: App<'b, 'a>) -> App<'b, 'a> {
         self.cmds.iter().fold(app, |app, cmd| {
-            app.subcommand(cmd.command(self.version, self.author))
+            let version = app.p.meta.version.unwrap_or_default();
+            let author = app.p.meta.author.unwrap_or_default();
+            app.subcommand(cmd.command(version, author))
         })
     }
 
