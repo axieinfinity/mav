@@ -1,29 +1,41 @@
 #![feature(async_closure)]
 
-#[macro_use]
-extern crate clap;
-
-use clap::Arg;
+use clap::{App, AppSettings, Arg};
 
 mod cmd;
 mod commander;
 mod util;
 
 fn main() {
-    let app = clap::app_from_crate!().arg(
-        Arg::with_name("environment")
-            .short("e")
-            .long("env")
-            .takes_value(true)
-            .value_name("STRING")
-            .help("Sets an environment, defaults to \"dev\""),
-    );
+    let app = App::new(clap::crate_name!())
+        .version(clap::crate_version!())
+        .about(clap::crate_description!())
+        .author(clap::crate_authors!())
+        .global_setting(AppSettings::GlobalVersion)
+        .arg(
+            Arg::with_name("environment")
+                .short("e")
+                .long("env")
+                .global(true)
+                .takes_value(true)
+                .value_name("STRING")
+                .help("Sets an environment, defaults to \"dev\""),
+        );
 
-    let commander = cmd::get_commander();
-    let app = commander.add_subcommands(app);
+    let mut commander = cmd::get_commander();
+    let mut app = commander.add_subcommands(app);
 
-    let matches = app.get_matches();
-    let env = matches.value_of("environment").unwrap_or("dev");
+    commander.capture_help(&mut app);
 
-    commander.run(env, &matches);
+    match app.get_matches_safe() {
+        Ok(matches) => {
+            let env = matches.value_of("environment").unwrap_or("dev");
+            commander.run(env, &matches);
+        }
+
+        Err(err) => match err.kind {
+            clap::ErrorKind::HelpDisplayed | clap::ErrorKind::VersionDisplayed => err.exit(),
+            _ => commander.handle_error(err),
+        },
+    }
 }
