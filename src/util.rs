@@ -1,4 +1,4 @@
-use std::cmp::min;
+use std::cmp;
 use std::ffi::{OsStr, OsString};
 use std::os::unix::fs::PermissionsExt;
 use std::{fmt, fs};
@@ -279,7 +279,7 @@ impl DownloadingInstaller {
                 let bar = ProgressBar::new(1);
                 let bar = progress.add(bar);
                 bar.set_style(style.clone());
-                bar.set_message(&item.cmd[..min(10, item.cmd.len())]);
+                bar.set_message(&item.cmd[..cmp::min(10, item.cmd.len())]);
 
                 items.push((item.to_owned(), bar));
             }
