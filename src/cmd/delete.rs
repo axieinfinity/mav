@@ -1,16 +1,13 @@
-use crate::commander::Command;
-use crate::file_stem;
-use crate::util;
-
+use clap_nested::{file_stem, Command};
 use colored::Colorize;
 use dialoguer::Confirmation;
 
-pub fn get_command<'a>() -> Command<'a, str> {
-    Command::new(
-        file_stem!(),
-        "Deletes the development Minikube machine",
-        |app| app,
-        |env, _matches| {
+use crate::util;
+
+pub fn cmd<'a>() -> Command<'a, str> {
+    Command::new(file_stem!())
+        .description("Deletes the development Minikube machine")
+        .runner(|env, _matches| {
             if env != "dev" {
                 panic!("Only supported in \"dev\" environment.");
             }
@@ -26,6 +23,5 @@ pub fn get_command<'a>() -> Command<'a, str> {
             {
                 util::Command::new("minikube", vec!["--profile=mav", "delete"]).run();
             }
-        },
-    )
+        })
 }

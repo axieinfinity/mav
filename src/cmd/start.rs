@@ -1,8 +1,7 @@
-use crate::commander::Command;
-use crate::file_stem;
-use crate::util;
+use clap_nested::{file_stem, Command};
 
-use super::fix;
+// use super::fix;
+use crate::util;
 
 const MINIKUBE_CPUS: u16 = 2;
 const MINIKUBE_DISK_SIZE: &'static str = "20000mb";
@@ -10,12 +9,10 @@ const MINIKUBE_ISO_VERSION: &'static str = "1.3.0";
 const MINIKUBE_KUBERNETES_VERSION: &'static str = "1.15.2";
 const MINIKUBE_MEMORY: &'static str = "2000mb";
 
-pub fn get_command<'a>() -> Command<'a, str> {
-    Command::new(
-        file_stem!(),
-        "Starts a Minikube machine for development",
-        |app| app,
-        |env, matches| {
+pub fn cmd<'a>() -> Command<'a, str> {
+    Command::new(file_stem!())
+        .description("Starts a Minikube machine for development")
+        .runner(|env, _matches| {
             if env != "dev" {
                 panic!("Only supported in \"dev\" environment.");
             }
@@ -54,7 +51,6 @@ pub fn get_command<'a>() -> Command<'a, str> {
 
             util::Command::new("helm", vec!["init"]).run();
 
-            fix::run(env, matches);
-        },
-    )
+            // fix::run(env, matches);
+        })
 }

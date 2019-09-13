@@ -1,15 +1,12 @@
-use crate::commander::Command;
-use crate::file_stem;
-use crate::util;
-
+use clap_nested::{file_stem, Command};
 use dialoguer::Confirmation;
 
-pub fn get_command<'a>() -> Command<'a, str> {
-    Command::new(
-        file_stem!(),
-        "Stops the development Minikube machine temporarily",
-        |app| app,
-        |env, _matches| {
+use crate::util;
+
+pub fn cmd<'a>() -> Command<'a, str> {
+    Command::new(file_stem!())
+        .description("Stops the development Minikube machine temporarily")
+        .runner(|env, _matches| {
             if env != "dev" {
                 panic!("Only supported in \"dev\" environment.");
             }
@@ -28,6 +25,5 @@ pub fn get_command<'a>() -> Command<'a, str> {
 
                 util::MinikubeStatus::Stopped | util::MinikubeStatus::Unknown => {}
             }
-        },
-    )
+        })
 }

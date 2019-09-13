@@ -12,17 +12,6 @@ use reqwest::r#async::Client;
 use tokio::fs::File;
 use which::which;
 
-#[macro_export]
-macro_rules! file_stem {
-    () => {
-        std::path::Path::new(file!())
-            .file_stem()
-            .unwrap()
-            .to_str()
-            .unwrap()
-    };
-}
-
 pub fn tokio_run<F: Future<Output = ()> + Send + 'static>(future: F) {
     tokio::run(Compat::new(Box::pin(
         future.map(|()| -> Result<(), ()> { Ok(()) }),

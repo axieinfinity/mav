@@ -1,5 +1,5 @@
-use crate::commander::Command;
-use crate::file_stem;
+use clap_nested::{file_stem, Command};
+
 use crate::util;
 
 const KUBECTL_VERSION: &'static str = "1.15.3";
@@ -7,12 +7,10 @@ const MINIKUBE_VERSION: &'static str = "1.3.1";
 const HELM_VERSION: &'static str = "2.14.3";
 const HELMFILE_VERSION: &'static str = "0.82.0";
 
-pub fn get_command<'a>() -> Command<'a, str> {
-    Command::new(
-        file_stem!(),
-        "Installs all prerequisites",
-        |app| app,
-        |env, _matches| {
+pub fn cmd<'a>() -> Command<'a, str> {
+    Command::new(file_stem!())
+        .description("Installs all prerequisites")
+        .runner(|env, _matches| {
             let platform = match util::OS {
                 util::Os::MacOs => "darwin",
                 util::Os::Linux => "linux",
@@ -92,6 +90,5 @@ pub fn get_command<'a>() -> Command<'a, str> {
                     util::install_by_downloading("kubectl", kubectl_url).run();
                 }
             }
-        },
-    )
+        })
 }
