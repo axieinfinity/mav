@@ -15,5 +15,5 @@ futures-preview = { version = "=0.3.0-alpha.18", features = ["compat"] }
 indicatif = "0.11.0"
 os_pipe = "0.8.1"
 reqwest = "0.9.20"
-tokio = "0.1.22"
+tokio = "1.18.5"
 which = "2.0.1"
